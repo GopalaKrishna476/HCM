@@ -1,37 +1,68 @@
 package com.hcm.service;
 
-import com.hcm.entity.UserInfoEntity;
-import com.hcm.entity.UserLeavesEntity;
-import com.hcm.enums.SubmitType;
-import com.hcm.pojo.RequestTimeOffPojo;
-import com.hcm.repository.UserLeavesRepository;
-import com.hcm.repository.UserRepository;
+import com.hcm.config.ApplicationProperties;
+import com.hcm.enums.LeaveType;
+import com.hcm.response.UserLeaveResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.sql.SQLException;
-import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class ConversionService {
 
     @Autowired
-    private UserRepository userRepository;
+    ApplicationProperties applicationProperties;
 
-    @Autowired
-    private UserLeavesRepository userLeavesRepository;
+    public List<UserLeaveResponse> populateUserLeaveResponse(Map<LeaveType, Long> leaveMap){
 
-    public UserLeavesEntity populateUserLeavesEntity(Long userId, RequestTimeOffPojo requestTimeOffPojo, Long existingLeaves) throws SQLException {
-        UserLeavesEntity userLeavesEntity = new UserLeavesEntity();
-        userLeavesEntity.setUserId(userId);
-        if(existingLeaves != 0 && requestTimeOffPojo.getSubmitType().equals(SubmitType.SUBMIT)){
-            userLeavesEntity.setNoOfLeaves(existingLeaves + 1);
-        }else {
-            userLeavesEntity.setNoOfLeaves(existingLeaves);
+        List<UserLeaveResponse> userLeaveResponseList = new ArrayList<>();
+        for(Map.Entry<LeaveType, Long> leave : leaveMap.entrySet()) {
+            UserLeaveResponse userLeaveResponse = new UserLeaveResponse();
+            userLeaveResponse.setLeaveType(leave.getKey());
+            userLeaveResponse.setRemainingLeaves(populateRemainingLeavesCount(leave.getKey(), leave.getValue()));
+            userLeaveResponse.setAnnualLeaves(populateAnnualLeavesCount(leave.getKey()));
+            userLeaveResponseList.add(userLeaveResponse);
         }
-        userLeavesEntity.setLeaveType(requestTimeOffPojo.getLeaveType());
-        userLeavesEntity.setReason(requestTimeOffPojo.getReason());
-        userLeavesEntity.setDocumentLink(requestTimeOffPojo.getAttachments());
-        return userLeavesEntity;
+
+        return userLeaveResponseList;
+    }
+
+    private Long populateRemainingLeavesCount(LeaveType leaveType, Long remainingLeaves){
+        long remainingLeaveCount = 0L;
+        switch (leaveType){
+            case EARNED_LEAVE:
+                remainingLeaveCount = applicationProperties.getEarnedLeaveCount() - remainingLeaves;
+                break;
+            case SICK_LEAVE:
+                remainingLeaveCount = applicationProperties.getSickLeaveCount() - remainingLeaves;
+                break;
+            case CASUAL_LEAVE:
+                remainingLeaveCount = applicationProperties.getCasualLeaveCount() - remainingLeaves;
+                break;
+            default:
+                break;
+        }
+        return remainingLeaveCount;
+    }
+
+    private Long populateAnnualLeavesCount(LeaveType leaveType){
+        long annualLeaveCount = 0L;
+        switch (leaveType){
+            case EARNED_LEAVE:
+                annualLeaveCount = applicationProperties.getEarnedLeaveCount();
+                break;
+            case SICK_LEAVE:
+                annualLeaveCount = applicationProperties.getSickLeaveCount();
+                break;
+            case CASUAL_LEAVE:
+                annualLeaveCount = applicationProperties.getCasualLeaveCount();
+                break;
+            default:
+                break;
+        }
+        return annualLeaveCount;
     }
 }

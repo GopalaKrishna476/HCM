@@ -1,9 +1,18 @@
 package com.hcm.repository;
 
-import com.hcm.entity.UserLeavesEntity;
+import com.hcm.entity.LeaveRequestEntity;
+import com.hcm.enums.LeaveType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
-public interface UserLeavesRepository extends JpaRepository<UserLeavesEntity, Long> {
+import java.util.List;
 
-    UserLeavesEntity findByUserId(Long userId);
+@Repository
+public interface UserLeavesRepository extends JpaRepository<LeaveRequestEntity, Long> {
+
+    @Query(value = "select * from LeaveRequest where lr_ui_id IN (?1)", nativeQuery = true)
+    List<LeaveRequestEntity> findLeaveRequestByUserId(Long userId);
+
+    List<LeaveRequestEntity> findByUserIdAndLeaveType(Long userId, LeaveType leaveType);
 }

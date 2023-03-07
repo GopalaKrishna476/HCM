@@ -1,14 +1,16 @@
 package com.hcm.service;
 
-import com.hcm.entity.UserLeavesEntity;
-import com.hcm.enums.SubmitType;
-import com.hcm.pojo.RequestTimeOffPojo;
+import com.hcm.entity.LeaveRequestEntity;
+import com.hcm.enums.LeaveType;
+import com.hcm.exception.ApiException;
 import com.hcm.repository.UserLeavesRepository;
-import com.hcm.response.HCMResponse;
+import com.hcm.response.UserLeaveResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class HCMService {
@@ -19,25 +21,18 @@ public class HCMService {
     @Autowired
     UserLeavesRepository userLeavesRepository;
 
-    public HCMResponse requestTimeOff(Long userId, RequestTimeOffPojo requestTimeOffPojo) throws SQLException {
-        // request for time off
-        HCMResponse hcmResponse = new HCMResponse();
-        Long existingLeaves = 0L;
-        UserLeavesEntity userLeavesEntityDb = userLeavesRepository.findByUserId(userId);
-        if(userLeavesEntityDb != null){
-            existingLeaves = userLeavesEntityDb.getNoOfLeaves();
+    public List<UserLeaveResponse> getLeaveInfo(Long userId) throws ApiException {
+        if(userId != null){
+            List<LeaveRequestEntity> leaveRequestEntityList = userLeavesRepository.findLeaveRequestByUserId(userId);
+            if(leaveRequestEntityList != null && !leaveRequestEntityList.isEmpty()){
+                Map<LeaveType, Long> leaveMap = leaveRequestEntityList.stream()
+                        .collect(Collectors.groupingBy(LeaveRequestEntity::getLeaveType, Collectors.counting()));
+                return conversionService.populateUserLeaveResponse(leaveMap);
+            }else{
+                throw new ApiException("User Not Found");
+            }
         }else{
-            hcmResponse.setCode(400L);
-            hcmResponse.setMessage("User Not Found");
+            throw new ApiException("User Id is null");
         }
-        UserLeavesEntity userLeavesEntity = conversionService.populateUserLeavesEntity(userId, requestTimeOffPojo, existingLeaves);
-        userLeavesRepository.save(userLeavesEntity);
-        hcmResponse.setCode(200L);
-        hcmResponse.setMessage("Success");
-        return hcmResponse;
-    }
-
-    public void getLeaveInfo(Long userId){
-
     }
 }
